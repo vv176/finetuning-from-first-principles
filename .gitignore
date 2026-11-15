@@ -1,0 +1,19 @@
+# Teaching commentary and instructor notes stay local.
+README.md
+**/README.md
+COMMANDS.md
+
+# Local machine notes
+*.local.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Data and model artefacts
+*.jsonl
+*.gguf
+*.safetensors
+.env
