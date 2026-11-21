@@ -130,13 +130,11 @@ class LoRAConv1D(nn.Module):
         for p in self.base.parameters():
             p.requires_grad = False             # W and its bias are frozen
 
-        d_in, d_out = base.weight.shape
-        # A: small and random. Random to break symmetry (see below). Small
-        # because the sensible scale for a 768-input layer is around
-        # 1/sqrt(768) = 0.036; peft's default init gives std 0.0208, so 0.01 is
-        # the same order. The magnitude does NOT change the output at step 0 --
-        # B = 0 takes care of that. All it sets is the initial size of B's
-        # gradient, and AdamW largely normalises that away.
+        d_in, d_out = base.weight.shape # 768 x 2304, 76x8 + 8x2304
+        # A and B registering as params
+        # grad_A  depends on B      -> zero at step 1
+        # grad_B  depends on x @ A  -> nonzero only if A is nonzero
+        # Set both to zero and both gradients stay zero forever; the detour never moves. So exactly one must be random. Convention: A random, B zero. B moves first, then A.
         self.A = nn.Parameter(torch.randn(d_in, r) * 0.01)
         self.B = nn.Parameter(torch.zeros(r, d_out))         # ZERO. see below.
         self.scale = alpha / r
@@ -230,7 +228,7 @@ B_before = model.transformer.h[0].attn.c_attn.B.clone()
 print("\n" + "=" * 72)
 print("4. TWENTY STEPS, LoRA ONLY")
 print("=" * 72)
-
+# params = [p for p in model.parameters() if p.requires_grad] only accounts for A and B's values?
 params = [p for p in model.parameters() if p.requires_grad]
 optimizer = torch.optim.AdamW(params, lr=1e-3)
 
